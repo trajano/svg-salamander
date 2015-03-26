@@ -1,18 +1,46 @@
 /*
- * SVGIcon.java
+ * SVG Salamander
+ * Copyright (c) 2004, Mark McKay
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or 
+ * without modification, are permitted provided that the following
+ * conditions are met:
+ *
+ *   - Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer.
+ *   - Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials 
+ *     provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * 
+ * Mark McKay can be contacted at mark@kitfox.com.  Salamander and other
+ * projects can be found at http://www.kitfox.com
  *
  * Created on April 21, 2005, 10:43 AM
  */
 
 package com.kitfox.svg.app.beans;
 
-import javax.swing.*;
+import com.kitfox.svg.*;
 import java.awt.*;
 import java.awt.geom.*;
 import java.net.*;
-import java.beans.*;
-
-import com.kitfox.svg.*;
+import javax.swing.*;
 
 /**
  *
@@ -21,7 +49,7 @@ import com.kitfox.svg.*;
 public class SVGPanel extends JPanel
 {
     public static final long serialVersionUID = 1;
-
+    public static final String PROP_AUTOSIZE = "PROP_AUTOSIZE";
 
     SVGUniverse svgUniverse = SVGCache.getSVGUniverse();
     
@@ -30,8 +58,15 @@ public class SVGPanel extends JPanel
 //    private String svgPath;
     URI svgURI;
 
-    private boolean scaleToFit;
+//    private boolean scaleToFit;
     AffineTransform scaleXform = new AffineTransform();
+
+    public static final int AUTOSIZE_NONE = 0;
+    public static final int AUTOSIZE_HORIZ = 1;
+    public static final int AUTOSIZE_VERT = 2;
+    public static final int AUTOSIZE_BESTFIT = 3;
+    public static final int AUTOSIZE_STRETCH = 4;
+    private int autosize = AUTOSIZE_NONE;
     
     /** Creates new form SVGIcon */
     public SVGPanel()
@@ -41,37 +76,58 @@ public class SVGPanel extends JPanel
         
     public int getSVGHeight()
     {
-        if (scaleToFit) return getPreferredSize().height;
+        if (autosize == AUTOSIZE_VERT || autosize == AUTOSIZE_STRETCH 
+                || autosize == AUTOSIZE_BESTFIT)
+        {
+            return getPreferredSize().height;
+        }
         
         SVGDiagram diagram = svgUniverse.getDiagram(svgURI);
-        if (diagram == null) return 0;
+        if (diagram == null)
+        {
+            return 0;
+        }
         return (int)diagram.getHeight();
     }
     
     public int getSVGWidth()
     {
-        if (scaleToFit) return getPreferredSize().width;
+        if (autosize == AUTOSIZE_HORIZ || autosize == AUTOSIZE_STRETCH 
+                || autosize == AUTOSIZE_BESTFIT)
+        {
+            return getPreferredSize().width;
+        }
         
         SVGDiagram diagram = svgUniverse.getDiagram(svgURI);
-        if (diagram == null) return 0;
+        if (diagram == null)
+        {
+            return 0;
+        }
         return (int)diagram.getWidth();
     }
     
-//          Draw the icon at the specified location.
     public void paintComponent(Graphics gg)
     {
         super.paintComponent(gg);
-        
-        Graphics2D g = (Graphics2D)gg;
-        
+
+        Graphics2D g = (Graphics2D)gg.create();
+        paintComponent(g);
+        g.dispose();
+    }
+    
+    private void paintComponent(Graphics2D g)
+    {
         Object oldAliasHint = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, antiAlias ? RenderingHints.VALUE_ANTIALIAS_ON : RenderingHints.VALUE_ANTIALIAS_OFF);
 
         
         SVGDiagram diagram = svgUniverse.getDiagram(svgURI);
-        if (diagram == null) return;
+        if (diagram == null)
+        {
+            return;
+        }
         
-        if (!scaleToFit)
+        if (autosize == AUTOSIZE_NONE)
         {
             try
             {
@@ -88,25 +144,34 @@ public class SVGPanel extends JPanel
         Dimension dim = getSize();
         final int width = dim.width;
         final int height = dim.height;
-//        int width = getWidth();
-//        int height = getHeight();
-        
-//        if (width == 0 || height == 0)
-//        {
-//           //Chances are we're rendering offscreen
-//            Dimension dim = getSize();
-//            width = dim.width;
-//            height = dim.height;
-//            return;
-//        }
-        
-//        g.setClip(0, 0, dim.width, dim.height);
-
             
-        final Rectangle2D.Double rect = new Rectangle2D.Double();
-        diagram.getViewRect(rect);
+//        final Rectangle2D.Double rect = new Rectangle2D.Double();
+//        diagram.getViewRect(rect);
         
-        scaleXform.setToScale(width / rect.width, height / rect.height);
+        double diaWidth = diagram.getWidth();
+        double diaHeight = diagram.getHeight();
+        
+        double scaleW = 1;
+        double scaleH = 1;
+        if (autosize == AUTOSIZE_BESTFIT)
+        {
+            scaleW = scaleH = (height / diaHeight < width / diaWidth) 
+                    ? height / diaHeight : width / diaWidth;
+        }
+        else if (autosize == AUTOSIZE_HORIZ)
+        {
+            scaleW = scaleH = width / diaWidth;
+        }
+        else if (autosize == AUTOSIZE_VERT)
+        {
+            scaleW = scaleH = height / diaHeight;
+        }
+        else if (autosize == AUTOSIZE_STRETCH)
+        {
+            scaleW = width / diaWidth;
+            scaleH = height / diaHeight;
+        }
+        scaleXform.setToScale(scaleW, scaleH);
         
         AffineTransform oldXform = g.getTransform();
         g.transform(scaleXform);
@@ -174,16 +239,27 @@ public class SVGPanel extends JPanel
         }
     }
     
+    /**
+     * If this SVG document has a viewbox, if scaleToFit is set, will scale the viewbox to match the
+     * preferred size of this icon
+     * @deprecated 
+     * @return 
+     */
     public boolean isScaleToFit()
     {
-        return scaleToFit;
+        return autosize == AUTOSIZE_STRETCH;
     }
-
+    
+    /**
+     * @deprecated 
+     * @return 
+     */
     public void setScaleToFit(boolean scaleToFit)
     {
-        boolean old = this.scaleToFit;
-        this.scaleToFit = scaleToFit;
-        firePropertyChange("scaleToFit", old, scaleToFit);
+        setAutosize(AUTOSIZE_STRETCH);
+//        boolean old = this.scaleToFit;
+//        this.scaleToFit = scaleToFit;
+//        firePropertyChange("scaleToFit", old, scaleToFit);
     }
     
     /**
@@ -221,6 +297,24 @@ public class SVGPanel extends JPanel
         this.antiAlias = antiAlias;
         firePropertyChange("antiAlias", old, antiAlias);
     }
+
+    /**
+     * @return the autosize
+     */
+    public int getAutosize()
+    {
+        return autosize;
+    }
+
+    /**
+     * @param autosize the autosize to set
+     */
+    public void setAutosize(int autosize)
+    {
+        int oldAutosize = this.autosize;
+        this.autosize = autosize;
+        firePropertyChange(PROP_AUTOSIZE, oldAutosize, autosize);
+    }
     
     /** This method is called from within the constructor to
      * initialize the form.
@@ -239,5 +333,6 @@ public class SVGPanel extends JPanel
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
+
     
 }

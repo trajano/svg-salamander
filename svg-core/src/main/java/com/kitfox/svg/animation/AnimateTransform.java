@@ -1,25 +1,35 @@
 /*
- * Animate.java
+ * SVG Salamander
+ * Copyright (c) 2004, Mark McKay
+ * All rights reserved.
  *
- *  The Salamander Project - 2D and 3D graphics libraries in Java
- *  Copyright (C) 2004 Mark McKay
+ * Redistribution and use in source and binary forms, with or 
+ * without modification, are permitted provided that the following
+ * conditions are met:
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
+ *   - Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer.
+ *   - Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials 
+ *     provided with the distribution.
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *  Mark McKay can be contacted at mark@kitfox.com.  Salamander and other
- *  projects can be found at http://www.kitfox.com
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * 
+ * Mark McKay can be contacted at mark@kitfox.com.  Salamander and other
+ * projects can be found at http://www.kitfox.com
  *
  * Created on August 15, 2004, 2:51 AM
  */
@@ -44,6 +54,8 @@ import org.xml.sax.SAXException;
  */
 public class AnimateTransform extends AnimateXform
 {
+    public static final String TAG_NAME = "animateTransform";
+    
 //    protected AffineTransform fromValue;
 //    protected AffineTransform toValue;
 //    protected double[] fromValue;  //Transform parameters
@@ -68,6 +80,11 @@ public class AnimateTransform extends AnimateXform
     /** Creates a new instance of Animate */
     public AnimateTransform()
     {
+    }
+
+    public String getTagName()
+    {
+        return TAG_NAME;
     }
 
     public void loaderStartElement(SVGLoaderHelper helper, Attributes attrs, SVGElement parent) throws SAXException
@@ -182,8 +199,14 @@ public class AnimateTransform extends AnimateXform
         {
             case TR_TRANSLATE:
             {
-                double x = (1.0 - interp) * fromValue[0] + interp * toValue[0];
-                double y = (1.0 - interp) * fromValue[1] + interp * toValue[1];
+                double x0 = fromValue.length >= 1 ? fromValue[0] : 0;
+                double x1 = toValue.length >= 1 ? toValue[0] : 0;
+                double y0 = fromValue.length >= 2 ? fromValue[1] : 0;
+                double y1 = toValue.length >= 2 ? toValue[1] : 0;
+                
+                double x = lerp(x0, x1, interp);
+                double y = lerp(y0, y1, interp);
+                
                 xform.setToTranslation(x, y);
                 break;
             }
@@ -194,28 +217,33 @@ public class AnimateTransform extends AnimateXform
                 double x2 = toValue.length == 3 ? toValue[1] : 0;
                 double y2 = toValue.length == 3 ? toValue[2] : 0;
                 
-                double theta = (1.0 - interp) * fromValue[0] + interp * toValue[0];
-                double x = (1.0 - interp) * x1 + interp * x2;
-                double y = (1.0 - interp) * y1 + interp * y2;
+                double theta = lerp(fromValue[0], toValue[0], interp);
+                double x = lerp(x1, x2, interp);
+                double y = lerp(y1, y2, interp);
                 xform.setToRotation(Math.toRadians(theta), x, y);
                 break;
             }
             case TR_SCALE:
             {
-                double x = (1.0 - interp) * fromValue[0] + interp * toValue[0];
-                double y = (1.0 - interp) * fromValue[1] + interp * toValue[1];
+                double x0 = fromValue.length >= 1 ? fromValue[0] : 1;
+                double x1 = toValue.length >= 1 ? toValue[0] : 1;
+                double y0 = fromValue.length >= 2 ? fromValue[1] : 1;
+                double y1 = toValue.length >= 2 ? toValue[1] : 1;
+                
+                double x = lerp(x0, x1, interp);
+                double y = lerp(y0, y1, interp);
                 xform.setToScale(x, y);
                 break;
             }
             case TR_SKEWX:
             {
-                double x = (1.0 - interp) * fromValue[0] + interp * toValue[0];
+                double x = lerp(fromValue[0], toValue[0], interp);
                 xform.setToShear(Math.toRadians(x), 0.0);
                 break;
             }
             case TR_SKEWY:
             {
-                double y = (1.0 - interp) * fromValue[0] + interp * toValue[0];
+                double y = lerp(fromValue[0], toValue[0], interp);
                 xform.setToShear(0.0, Math.toRadians(y));
                 break;
             }
